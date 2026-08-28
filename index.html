@@ -252,6 +252,7 @@
   .result-score span{ color:var(--yellow); }
   .result-msg{ font-size:clamp(16px,1.9vw,24px); color:var(--text); margin: 18px 0 8px; font-weight:500;}
   .result-sub{ font-size:clamp(13px,1.3vw,16px); color:var(--text-dim); margin-bottom: clamp(26px,4vh,40px); }
+  .result-actions{ display:flex; flex-direction:column; align-items:center; gap:16px; }
   .btn-restart{
     font-family:var(--font-display); font-weight:600; letter-spacing:0.1em;
     text-transform:uppercase; font-size:clamp(15px,1.7vw,20px);
@@ -347,6 +348,24 @@
     .compare-row{ flex-direction:column; }
     .dept-grid{ grid-template-columns: repeat(2, 1fr); }
     .kb-key{ min-width: clamp(24px,7vw,36px); }
+  }
+
+  /* ================= PRINTED TICKET (thermal receipt, 74mm) ================= */
+  #ticket-impressao{ display:none; }
+  @media print{
+    @page{ margin:0; size:74mm auto; }
+    html, body{ width:74mm; height:auto; overflow:visible; background:#fff !important; }
+    body > *:not(#ticket-impressao){ display:none !important; }
+    #ticket-impressao{
+      position:static; display:block !important; width:74mm; min-height:1mm; padding:10px;
+      background:#fff; color:#000; font-family:'Courier New', monospace; text-align:center;
+    }
+    .ticket-separator{ width:100%; margin:12px 0; border-top:1px dashed #000; }
+    .ticket-header{ margin-bottom:4px; font-size:16px; font-weight:bold; line-height:1.3; text-transform:uppercase; }
+    .ticket-subtitle{ margin-bottom:8px; font-size:11px; letter-spacing:1px; text-transform:uppercase; }
+    .ticket-body{ padding:0 5px; font-size:12px; line-height:1.4; text-align:left; }
+    .ticket-info-grid{ margin:10px 0; padding:0 5px; font-size:13px; font-weight:bold; line-height:1.5; text-align:left; }
+    .ticket-footer-msg{ margin-top:10px; font-size:12px; font-weight:bold; line-height:1.3; }
   }
 </style>
 </head>
@@ -475,7 +494,10 @@
       <p class="result-msg" id="result-msg"></p>
       <p class="result-sub" id="result-sub"></p>
       <p class="result-dept" id="result-dept"></p>
-      <button class="btn-restart" id="btn-restart">Reiniciar investigação</button>
+      <div class="result-actions">
+        <button class="btn-primary" id="btn-print-ticket" type="button">Imprimir ticket</button>
+        <button class="btn-restart" id="btn-restart">Reiniciar investigação</button>
+      </div>
     </div>
   </section>
 
@@ -510,6 +532,22 @@
     </div>
   </div>
 
+</div>
+
+<!-- ============ PRINTED TICKET (only visible via window.print(), see @media print) ============ -->
+<div id="ticket-impressao">
+  <div class="ticket-header">Operação CSI</div>
+  <div class="ticket-subtitle">Investigação concluída!</div>
+  <div class="ticket-separator"></div>
+  <div class="ticket-body">Parabéns! Você concluiu a Operação CSI e ajudou a fortalecer a Segurança de Alimentos e o Food Defense na nossa unidade.<br><br>Apresente este ticket ao RH para receber seu brinde.</div>
+  <div class="ticket-separator"></div>
+  <div class="ticket-info-grid">
+    TICKET Nº: <span id="print-ticket-number">------</span><br>
+    DATA: <span id="print-ticket-date">--/--/----</span><br>
+    PONTUAÇÃO: <span id="print-ticket-score">-- de --</span>
+  </div>
+  <div class="ticket-separator"></div>
+  <div class="ticket-footer-msg">Continue com esse olhar atento no seu dia a dia.<br>Juntos pela Segurança de Alimentos.</div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -764,6 +802,7 @@
     resultSub: document.getElementById('result-sub'),
     resultDept: document.getElementById('result-dept'),
     btnRestart: document.getElementById('btn-restart'),
+    btnPrintTicket: document.getElementById('btn-print-ticket'),
     adminOverlay: document.getElementById('admin-overlay'),
     adminFileName: document.getElementById('admin-filename'),
     adminCount: document.getElementById('admin-count'),
@@ -1026,7 +1065,28 @@
 
   function resetToAttract(){
     els.modalOverlay.classList.remove('active');
+    closeAdminPanel();
     showScreen(els.attract);
+  }
+
+  // ---- printed ticket (74mm thermal receipt, see @media print in the CSS) ----
+  function gerarEImprimirTicket(){
+    const contador = (parseInt(localStorage.getItem('contador_ticket_csi'), 10) || 0) + 1;
+    localStorage.setItem('contador_ticket_csi', contador);
+    document.getElementById('print-ticket-number').textContent = String(contador).padStart(4, '0');
+    document.getElementById('print-ticket-date').textContent = new Date().toLocaleDateString('pt-BR');
+    document.getElementById('print-ticket-score').textContent = `${state.score} de ${SCENARIOS.length}`;
+
+    let jaReiniciou = false;
+    const reiniciar = () => {
+      if (jaReiniciou) return;
+      jaReiniciou = true;
+      resetToAttract();
+    };
+    window.addEventListener('afterprint', reiniciar, { once: true });
+    window.print();
+    // Reserva para drivers/navegadores que não disparam o evento afterprint.
+    setTimeout(reiniciar, 15000);
   }
 
   // ---- idle auto-reset (kiosk behaviour) ----
@@ -1087,6 +1147,7 @@
     showResult();
   });
   els.btnRestart.addEventListener('click', resetToAttract);
+  els.btnPrintTicket.addEventListener('click', gerarEImprimirTicket);
   els.btnAdminConnect.addEventListener('click', connectXlsxFile);
   els.btnAdminDownload.addEventListener('click', downloadXlsxNow);
   els.btnAdminClose.addEventListener('click', closeAdminPanel);
