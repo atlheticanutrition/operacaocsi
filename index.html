@@ -296,6 +296,25 @@
 
   .result-dept{ font-size:clamp(11px,1vw,13px); color:var(--text-dim); letter-spacing:0.04em; margin: -8px 0 0; }
 
+  /* ================= ADMIN PANEL ================= */
+  #admin-overlay{
+    position:fixed; inset:0; z-index:30; display:none;
+    align-items:center; justify-content:center;
+    background:rgba(6,6,7,0.9); backdrop-filter: blur(2px); padding:24px;
+  }
+  #admin-overlay.active{ display:flex; }
+  .admin-card{
+    background:var(--panel-2); border:1px solid var(--line); border-radius:16px;
+    max-width:520px; width:100%; padding: clamp(24px,3.4vw,36px); text-align:center;
+  }
+  .admin-title{ font-family:var(--font-display); font-weight:700; font-size:clamp(20px,2.4vw,26px); margin:0 0 16px; }
+  .admin-line{ font-size:clamp(14px,1.4vw,17px); color:var(--text-dim); margin: 8px 0; }
+  .admin-line b{ color:var(--text); }
+  .admin-actions{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin: 22px 0 14px; }
+  .admin-actions .btn-primary{ padding: 14px 26px; font-size:clamp(13px,1.3vw,16px); }
+  .admin-close{ padding: 12px 34px; font-size:clamp(13px,1.3vw,16px); }
+  .admin-hint{ font-size:clamp(11px,1vw,13px); color:var(--text-dim); margin-top:16px; }
+
   @media (max-aspect-ratio: 4/5), (max-width: 820px){
     .cards-row{ flex-direction:column; align-items:center; }
     .evidence-card{ max-width:720px; width:100%; }
@@ -354,8 +373,8 @@
       <p class="identify-sub">Selecione uma opção para concluir o desafio.</p>
 
       <div class="identify-name">
-        <label for="input-name">Seu nome (opcional)</label>
-        <input type="text" id="input-name" placeholder="Digite seu nome" autocomplete="off" maxlength="60">
+        <label for="input-name">Seu nome *</label>
+        <input type="text" id="input-name" placeholder="Digite seu nome" autocomplete="off" maxlength="60" required>
       </div>
 
       <div class="dept-grid" id="dept-grid">
@@ -379,6 +398,21 @@
     </div>
   </section>
 
+  <!-- ============ ADMIN PANEL (press-and-hold the kicker on the attract screen) ============ -->
+  <div id="admin-overlay">
+    <div class="admin-card">
+      <h3 class="admin-title">Painel do operador</h3>
+      <p class="admin-line">Arquivo Excel: <b id="admin-filename">Nenhum arquivo conectado</b></p>
+      <p class="admin-line">Registros salvos: <b id="admin-count">0</b></p>
+      <div class="admin-actions">
+        <button class="btn-primary" id="btn-admin-connect" type="button">Conectar / trocar arquivo</button>
+        <button class="btn-primary" id="btn-admin-download" type="button">Baixar registros agora</button>
+      </div>
+      <button class="btn-restart admin-close" id="btn-admin-close" type="button">Fechar</button>
+      <p class="admin-hint">Depois de conectado, o arquivo .xlsx é atualizado automaticamente a cada pessoa que concluir o desafio.</p>
+    </div>
+  </div>
+
   <!-- ============ FEEDBACK MODAL ============ -->
   <div id="modal-overlay">
     <div class="modal-card">
@@ -397,6 +431,7 @@
 
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 (function(){
   "use strict";
@@ -452,6 +487,168 @@
   ];
 
   const IDLE_TIMEOUT_MS = 45000;
+  const XLSX_FILENAME_SUGGESTION = 'registros-operacao-csi.xlsx';
+
+  // ---- data recording (Excel file on the totem's PC via File System Access API) ----
+  let xlsxHandle = null;    // FileSystemFileHandle currently connected & writable
+  let pendingHandle = null; // a previously-connected handle restored from IndexedDB, awaiting permission
+  let records = [];         // {timestamp, name, department, score, total} — full local backup of every completion
+
+  function idbOpen(){
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open('csi-totem-db', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('kv');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async function idbGet(key){
+    const db = await idbOpen();
+    return new Promise((resolve, reject) => {
+      const req = db.transaction('kv', 'readonly').objectStore('kv').get(key);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async function idbSet(key, val){
+    const db = await idbOpen();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('kv', 'readwrite');
+      tx.objectStore('kv').put(val, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  function buildWorkbook(){
+    const header = ['Data/Hora', 'Nome', 'Departamento', 'Pontuação', 'Total de casos'];
+    const rows = records.map(r => [r.timestamp, r.name, r.department, r.score, r.total]);
+    const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+    ws['!cols'] = [{ wch: 19 }, { wch: 26 }, { wch: 24 }, { wch: 11 }, { wch: 13 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Registros');
+    return wb;
+  }
+
+  async function writeXlsxFile(){
+    if (!xlsxHandle) return;
+    try {
+      const data = XLSX.write(buildWorkbook(), { bookType: 'xlsx', type: 'array' });
+      const writable = await xlsxHandle.createWritable();
+      await writable.write(data);
+      await writable.close();
+    } catch(err){
+      console.error('Falha ao gravar o arquivo Excel:', err);
+    }
+  }
+
+  function downloadXlsxNow(){
+    XLSX.writeFile(buildWorkbook(), XLSX_FILENAME_SUGGESTION);
+  }
+
+  async function tryImportExistingXlsx(handle){
+    try {
+      const file = await handle.getFile();
+      if (file.size === 0) return;
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+      rows.forEach(r => {
+        if (r['Nome']){
+          records.push({
+            timestamp: r['Data/Hora'] || '',
+            name: r['Nome'] || '',
+            department: r['Departamento'] || '',
+            score: r['Pontuação'] != null ? r['Pontuação'] : '',
+            total: r['Total de casos'] != null ? r['Total de casos'] : ''
+          });
+        }
+      });
+      await idbSet('records', records);
+    } catch(err){
+      console.warn('Não havia dados anteriores para importar do arquivo (normal se for novo):', err);
+    }
+  }
+
+  async function connectXlsxFile(){
+    if (!window.showSaveFilePicker){
+      alert('Este navegador não suporta gravação automática de arquivos. Use "Baixar registros agora" para exportar manualmente, ou abra o totem no Chrome/Edge.');
+      return;
+    }
+    try {
+      let handle = null;
+      if (pendingHandle){
+        const perm = await pendingHandle.requestPermission({ mode: 'readwrite' });
+        if (perm === 'granted') handle = pendingHandle;
+      }
+      if (!handle){
+        handle = await window.showSaveFilePicker({
+          suggestedName: XLSX_FILENAME_SUGGESTION,
+          types: [{ description: 'Planilha Excel', accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] } }]
+        });
+        await tryImportExistingXlsx(handle);
+      }
+      xlsxHandle = handle;
+      pendingHandle = null;
+      await idbSet('xlsxHandle', handle);
+      await writeXlsxFile();
+      updateAdminStatus();
+    } catch(err){
+      if (err.name !== 'AbortError'){
+        console.error('Falha ao conectar ao arquivo Excel:', err);
+        alert('Não foi possível conectar ao arquivo. Tente novamente.');
+      }
+    }
+  }
+
+  async function loadPersistedState(){
+    try {
+      const savedRecords = await idbGet('records');
+      if (Array.isArray(savedRecords)) records = savedRecords;
+    } catch(err){ console.warn('Falha ao carregar registros salvos:', err); }
+
+    try {
+      const handle = await idbGet('xlsxHandle');
+      if (handle){
+        const perm = await handle.queryPermission({ mode: 'readwrite' });
+        if (perm === 'granted'){
+          xlsxHandle = handle;
+        } else {
+          pendingHandle = handle; // reconnect with one tap in the admin panel (needs a user gesture)
+        }
+      }
+    } catch(err){ console.warn('Falha ao restaurar o arquivo Excel conectado:', err); }
+
+    updateAdminStatus();
+  }
+
+  async function recordCompletion(){
+    records.push({
+      timestamp: new Date().toLocaleString('pt-BR'),
+      name: state.name,
+      department: state.department,
+      score: state.score,
+      total: SCENARIOS.length
+    });
+    try { await idbSet('records', records); } catch(err){ console.warn('Falha ao salvar registro localmente:', err); }
+    await writeXlsxFile();
+    updateAdminStatus();
+  }
+
+  function updateAdminStatus(){
+    if (!els.adminFileName) return;
+    els.adminFileName.textContent = xlsxHandle ? (xlsxHandle.name || 'arquivo conectado') : 'Nenhum arquivo conectado';
+    els.adminCount.textContent = records.length;
+  }
+
+  function openAdminPanel(){
+    updateAdminStatus();
+    els.adminOverlay.classList.add('active');
+  }
+  function closeAdminPanel(){
+    els.adminOverlay.classList.remove('active');
+  }
 
   let state = {
     current: 0,
@@ -485,7 +682,14 @@
     resultMsg: document.getElementById('result-msg'),
     resultSub: document.getElementById('result-sub'),
     resultDept: document.getElementById('result-dept'),
-    btnRestart: document.getElementById('btn-restart')
+    btnRestart: document.getElementById('btn-restart'),
+    adminOverlay: document.getElementById('admin-overlay'),
+    adminFileName: document.getElementById('admin-filename'),
+    adminCount: document.getElementById('admin-count'),
+    btnAdminConnect: document.getElementById('btn-admin-connect'),
+    btnAdminDownload: document.getElementById('btn-admin-download'),
+    btnAdminClose: document.getElementById('btn-admin-close'),
+    kicker: document.querySelector('#screen-attract .kicker')
   };
 
   function showScreen(name){
@@ -522,7 +726,12 @@
     state.department = name;
     els.deptGrid.querySelectorAll('.dept-btn').forEach(b => b.classList.remove('selected'));
     btnEl.classList.add('selected');
-    els.btnConclude.disabled = false;
+    updateConcludeState();
+  }
+
+  function updateConcludeState(){
+    const hasName = els.inputName.value.trim().length > 0;
+    els.btnConclude.disabled = !(hasName && state.department);
   }
 
   function resetIdentifyForm(){
@@ -713,18 +922,48 @@
     document.addEventListener(evt, bumpIdle, {passive:true});
   });
 
-  els.attract.addEventListener('click', startGame);
+  // ---- admin panel: press-and-hold the attract screen's kicker to open it ----
+  let adminHoldTimer = null;
+  let suppressAttractClick = false;
+  if (els.kicker){
+    els.kicker.addEventListener('pointerdown', () => {
+      suppressAttractClick = false;
+      adminHoldTimer = setTimeout(() => {
+        suppressAttractClick = true;
+        openAdminPanel();
+      }, 1200);
+    });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(evt => {
+      els.kicker.addEventListener(evt, () => clearTimeout(adminHoldTimer));
+    });
+  }
+
+  els.attract.addEventListener('click', () => {
+    if (suppressAttractClick){ suppressAttractClick = false; return; }
+    startGame();
+  });
   els.btnNext.addEventListener('click', nextCase);
-  els.btnConclude.addEventListener('click', () => {
-    if (!state.department) return;
-    state.name = els.inputName.value.trim();
+  els.inputName.addEventListener('input', updateConcludeState);
+  els.btnConclude.addEventListener('click', async () => {
+    const typedName = els.inputName.value.trim();
+    if (!state.department || !typedName) return;
+    state.name = typedName;
+    els.btnConclude.disabled = true;
+    await recordCompletion();
     showResult();
   });
   els.btnRestart.addEventListener('click', resetToAttract);
+  els.btnAdminConnect.addEventListener('click', connectXlsxFile);
+  els.btnAdminDownload.addEventListener('click', downloadXlsxNow);
+  els.btnAdminClose.addEventListener('click', closeAdminPanel);
+  els.adminOverlay.addEventListener('click', (e) => {
+    if (e.target === els.adminOverlay) closeAdminPanel();
+  });
 
   // init
   buildDeptGrid();
   shuffleOrder();
+  loadPersistedState();
 })();
 </script>
 </body>
