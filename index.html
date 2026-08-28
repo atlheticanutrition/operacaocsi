@@ -366,6 +366,9 @@
     .ticket-body{ padding:0 5px; font-size:12px; line-height:1.4; text-align:left; }
     .ticket-info-grid{ margin:10px 0; padding:0 5px; font-size:13px; font-weight:bold; line-height:1.5; text-align:left; }
     .ticket-footer-msg{ margin-top:10px; font-size:12px; font-weight:bold; line-height:1.3; }
+    .qrcode-section{ display:flex; flex-direction:column; align-items:center; margin:15px 0 5px; }
+    .qrcode-image{ width:110px; height:110px; margin-bottom:6px; }
+    .qrcode-caption{ max-width:180px; font-size:10px; font-weight:bold; line-height:1.2; text-transform:uppercase; }
   }
 </style>
 </head>
@@ -544,6 +547,11 @@
     TICKET Nº: <span id="print-ticket-number">------</span><br>
     DATA: <span id="print-ticket-date">--/--/----</span><br>
     PONTUAÇÃO: <span id="print-ticket-score">-- de --</span>
+  </div>
+  <div class="ticket-separator"></div>
+  <div class="qrcode-section">
+    <img class="qrcode-image" src="qrcode.png" alt="QR Code Atlhetica Nutrition">
+    <div class="qrcode-caption">Acesse nosso site oficial</div>
   </div>
   <div class="ticket-separator"></div>
   <div class="ticket-footer-msg">Continue com esse olhar atento no seu dia a dia.<br>Juntos pela Segurança de Alimentos.</div>
