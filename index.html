@@ -296,6 +296,32 @@
 
   .result-dept{ font-size:clamp(11px,1vw,13px); color:var(--text-dim); letter-spacing:0.04em; margin: -8px 0 0; }
 
+  /* ================= ON-SCREEN KEYBOARD ================= */
+  .identify-name input[readonly]{ cursor:pointer; }
+  .keyboard{
+    position:fixed; left:0; right:0; bottom:0; z-index:15;
+    background:var(--panel-2); border-top:1px solid var(--line);
+    padding: clamp(10px,1.6vh,16px) clamp(12px,2vw,24px) calc(env(safe-area-inset-bottom,0px) + clamp(10px,1.6vh,16px));
+    transform: translateY(100%);
+    transition: transform .22s ease;
+    box-shadow: 0 -10px 26px rgba(0,0,0,0.45);
+  }
+  .keyboard.active{ transform: translateY(0); }
+  .kb-row{ display:flex; justify-content:center; flex-wrap:wrap; gap: clamp(5px,0.6vw,8px); margin-bottom: clamp(6px,1vh,10px); }
+  .kb-key{
+    font-family:var(--font-body); font-weight:600; font-size:clamp(15px,1.7vw,20px);
+    color:var(--text); background:var(--panel); border:1px solid var(--line); border-radius:8px;
+    padding: clamp(10px,1.6vh,14px) 0; min-width: clamp(28px,3.4vw,42px); flex:1; max-width:56px;
+    cursor:pointer;
+  }
+  .kb-key:active{ background:var(--line); }
+  .kb-row-accents .kb-key{ color:var(--yellow); }
+  .kb-row-actions{ gap: clamp(8px,1vw,12px); }
+  .kb-row-actions .kb-key{ flex:none; max-width:none; padding-left:20px; padding-right:20px; }
+  .kb-shift.active{ border-color:var(--yellow); color:var(--yellow); }
+  .kb-space{ flex:1; max-width:none; }
+  .kb-done{ background:var(--yellow); color:var(--bg); border-color:var(--yellow); }
+
   /* ================= ADMIN PANEL ================= */
   #admin-overlay{
     position:fixed; inset:0; z-index:30; display:none;
@@ -320,6 +346,7 @@
     .evidence-card{ max-width:720px; width:100%; }
     .compare-row{ flex-direction:column; }
     .dept-grid{ grid-template-columns: repeat(2, 1fr); }
+    .kb-key{ min-width: clamp(24px,7vw,36px); }
   }
 </style>
 </head>
@@ -374,7 +401,7 @@
 
       <div class="identify-name">
         <label for="input-name">Seu nome *</label>
-        <input type="text" id="input-name" placeholder="Digite seu nome" autocomplete="off" maxlength="60" required>
+        <input type="text" id="input-name" placeholder="Toque aqui para digitar" autocomplete="off" maxlength="60" required readonly inputmode="none">
       </div>
 
       <div class="dept-grid" id="dept-grid">
@@ -384,6 +411,60 @@
       <button class="btn-restart" id="btn-conclude" disabled>Concluir desafio</button>
     </div>
   </section>
+
+  <!-- ============ ON-SCREEN TOUCH KEYBOARD (for the name field) ============ -->
+  <div class="keyboard" id="keyboard">
+    <div class="kb-row">
+      <button class="kb-key" type="button" data-key="q">q</button>
+      <button class="kb-key" type="button" data-key="w">w</button>
+      <button class="kb-key" type="button" data-key="e">e</button>
+      <button class="kb-key" type="button" data-key="r">r</button>
+      <button class="kb-key" type="button" data-key="t">t</button>
+      <button class="kb-key" type="button" data-key="y">y</button>
+      <button class="kb-key" type="button" data-key="u">u</button>
+      <button class="kb-key" type="button" data-key="i">i</button>
+      <button class="kb-key" type="button" data-key="o">o</button>
+      <button class="kb-key" type="button" data-key="p">p</button>
+    </div>
+    <div class="kb-row">
+      <button class="kb-key" type="button" data-key="a">a</button>
+      <button class="kb-key" type="button" data-key="s">s</button>
+      <button class="kb-key" type="button" data-key="d">d</button>
+      <button class="kb-key" type="button" data-key="f">f</button>
+      <button class="kb-key" type="button" data-key="g">g</button>
+      <button class="kb-key" type="button" data-key="h">h</button>
+      <button class="kb-key" type="button" data-key="j">j</button>
+      <button class="kb-key" type="button" data-key="k">k</button>
+      <button class="kb-key" type="button" data-key="l">l</button>
+      <button class="kb-key" type="button" data-key="ç">ç</button>
+    </div>
+    <div class="kb-row">
+      <button class="kb-key" type="button" data-key="z">z</button>
+      <button class="kb-key" type="button" data-key="x">x</button>
+      <button class="kb-key" type="button" data-key="c">c</button>
+      <button class="kb-key" type="button" data-key="v">v</button>
+      <button class="kb-key" type="button" data-key="b">b</button>
+      <button class="kb-key" type="button" data-key="n">n</button>
+      <button class="kb-key" type="button" data-key="m">m</button>
+    </div>
+    <div class="kb-row kb-row-accents">
+      <button class="kb-key" type="button" data-key="á">á</button>
+      <button class="kb-key" type="button" data-key="é">é</button>
+      <button class="kb-key" type="button" data-key="í">í</button>
+      <button class="kb-key" type="button" data-key="ó">ó</button>
+      <button class="kb-key" type="button" data-key="ú">ú</button>
+      <button class="kb-key" type="button" data-key="â">â</button>
+      <button class="kb-key" type="button" data-key="ê">ê</button>
+      <button class="kb-key" type="button" data-key="ã">ã</button>
+      <button class="kb-key" type="button" data-key="õ">õ</button>
+    </div>
+    <div class="kb-row kb-row-actions">
+      <button class="kb-key kb-shift" type="button" id="kb-shift">⇧ Maiúsculas</button>
+      <button class="kb-key kb-space" type="button" id="kb-space">Espaço</button>
+      <button class="kb-key kb-backspace" type="button" id="kb-backspace">⌫ Apagar</button>
+      <button class="kb-key kb-done" type="button" id="kb-done">OK</button>
+    </div>
+  </div>
 
   <!-- ============ RESULT SCREEN ============ -->
   <section id="screen-result" class="screen">
@@ -479,7 +560,7 @@
   ];
 
   const DEPARTMENTS = [
-    "Comercial","Recursos Humanos","TI","Financeiro",
+    "Comercial","Recursos Humanos","TI","Financeiro","Faturamento",
     "Produção","Marketing","Logística","P&D",
     "Regulatórios","Qualidade","Compras","Controles Internos",
     "Controladoria","Manutenção","Almoxarifado de M.P.","Almoxarifado de P.A.",
@@ -689,7 +770,12 @@
     btnAdminConnect: document.getElementById('btn-admin-connect'),
     btnAdminDownload: document.getElementById('btn-admin-download'),
     btnAdminClose: document.getElementById('btn-admin-close'),
-    kicker: document.querySelector('#screen-attract .kicker')
+    kicker: document.querySelector('#screen-attract .kicker'),
+    keyboard: document.getElementById('keyboard'),
+    kbShift: document.getElementById('kb-shift'),
+    kbSpace: document.getElementById('kb-space'),
+    kbBackspace: document.getElementById('kb-backspace'),
+    kbDone: document.getElementById('kb-done')
   };
 
   function showScreen(name){
@@ -726,6 +812,7 @@
     state.department = name;
     els.deptGrid.querySelectorAll('.dept-btn').forEach(b => b.classList.remove('selected'));
     btnEl.classList.add('selected');
+    closeKeyboard();
     updateConcludeState();
   }
 
@@ -734,12 +821,46 @@
     els.btnConclude.disabled = !(hasName && state.department);
   }
 
+  // ---- on-screen touch keyboard (no physical keyboard on the totem) ----
+  let kbShiftActive = false;
+
+  function renderKeyboardCase(){
+    els.keyboard.querySelectorAll('.kb-key[data-key]').forEach(btn => {
+      const base = btn.dataset.key;
+      btn.textContent = kbShiftActive ? base.toUpperCase() : base;
+    });
+  }
+  function toggleShift(){
+    kbShiftActive = !kbShiftActive;
+    els.kbShift.classList.toggle('active', kbShiftActive);
+    renderKeyboardCase();
+  }
+  function insertChar(ch){
+    if (els.inputName.value.length >= (els.inputName.maxLength || 60)) return;
+    els.inputName.value += ch;
+    updateConcludeState();
+  }
+  function backspaceChar(){
+    els.inputName.value = els.inputName.value.slice(0, -1);
+    updateConcludeState();
+  }
+  function openKeyboard(){
+    els.keyboard.classList.add('active');
+  }
+  function closeKeyboard(){
+    els.keyboard.classList.remove('active');
+  }
+
   function resetIdentifyForm(){
     state.department = null;
     state.name = '';
     els.inputName.value = '';
     els.btnConclude.disabled = true;
     els.deptGrid.querySelectorAll('.dept-btn').forEach(b => b.classList.remove('selected'));
+    kbShiftActive = false;
+    els.kbShift.classList.remove('active');
+    renderKeyboardCase();
+    closeKeyboard();
   }
 
   function showIdentify(){
@@ -944,9 +1065,22 @@
   });
   els.btnNext.addEventListener('click', nextCase);
   els.inputName.addEventListener('input', updateConcludeState);
+  els.inputName.addEventListener('click', openKeyboard);
+  els.inputName.addEventListener('focus', openKeyboard);
+  els.keyboard.addEventListener('click', (e) => {
+    const btn = e.target.closest('.kb-key');
+    if (!btn) return;
+    if (btn === els.kbShift){ toggleShift(); return; }
+    if (btn === els.kbSpace){ insertChar(' '); return; }
+    if (btn === els.kbBackspace){ backspaceChar(); return; }
+    if (btn === els.kbDone){ closeKeyboard(); return; }
+    const key = btn.dataset.key;
+    if (key != null) insertChar(kbShiftActive ? key.toUpperCase() : key);
+  });
   els.btnConclude.addEventListener('click', async () => {
     const typedName = els.inputName.value.trim();
     if (!state.department || !typedName) return;
+    closeKeyboard();
     state.name = typedName;
     els.btnConclude.disabled = true;
     await recordCompletion();
