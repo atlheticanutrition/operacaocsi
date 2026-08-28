@@ -258,11 +258,49 @@
     background:var(--yellow); color:var(--bg); border:none; border-radius:8px;
     padding: 18px 50px; cursor:pointer;
   }
+  .btn-restart:disabled{ opacity:0.35; cursor:default; }
+
+  /* ================= IDENTIFY SCREEN ================= */
+  #screen-identify{ align-items:center; justify-content:center; text-align:center; overflow-y:auto; padding: clamp(20px,3.4vh,36px) clamp(20px,4vw,60px); }
+  .identify-inner{ max-width:980px; width:100%; margin:0 auto; position:relative; z-index:2; }
+  .identify-title{
+    font-family:var(--font-display); font-weight:700;
+    font-size:clamp(26px,3.6vw,42px); margin: 10px 0 8px; line-height:1.1;
+  }
+  .identify-sub{ font-size:clamp(14px,1.5vw,18px); color:var(--text-dim); margin:0 0 clamp(18px,3vh,28px); }
+
+  .identify-name{ max-width:480px; margin: 0 auto clamp(20px,3vh,28px); text-align:left; }
+  .identify-name label{
+    display:block; font-family:var(--font-display); font-size:clamp(11px,1vw,13px);
+    letter-spacing:0.08em; text-transform:uppercase; color:var(--text-dim); margin-bottom:8px;
+  }
+  .identify-name input{
+    width:100%; font-family:var(--font-body); font-size:clamp(15px,1.5vw,18px);
+    background:var(--panel); border:1px solid var(--line); border-radius:8px;
+    color:var(--text); padding:13px 16px; outline:none;
+  }
+  .identify-name input:focus{ border-color:var(--yellow); }
+
+  .dept-grid{
+    display:grid; grid-template-columns: repeat(4, 1fr); gap: clamp(10px,1.3vw,14px);
+    margin-bottom: clamp(20px,3vh,28px);
+  }
+  .dept-btn{
+    font-family:var(--font-body); font-weight:600; font-size:clamp(13px,1.2vw,16px);
+    color:var(--text); background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    padding: clamp(14px,2vh,18px) 10px; cursor:pointer;
+    transition: border-color .15s ease, background .15s ease, color .15s ease, transform .1s ease;
+  }
+  .dept-btn:active{ transform: scale(0.97); }
+  .dept-btn.selected{ border-color:var(--yellow); background:rgba(240,180,41,0.14); color:var(--yellow); }
+
+  .result-dept{ font-size:clamp(11px,1vw,13px); color:var(--text-dim); letter-spacing:0.04em; margin: -8px 0 0; }
 
   @media (max-aspect-ratio: 4/5), (max-width: 820px){
     .cards-row{ flex-direction:column; align-items:center; }
     .evidence-card{ max-width:720px; width:100%; }
     .compare-row{ flex-direction:column; }
+    .dept-grid{ grid-template-columns: repeat(2, 1fr); }
   }
 </style>
 </head>
@@ -307,6 +345,27 @@
     </div>
   </section>
 
+  <!-- ============ IDENTIFY SCREEN ============ -->
+  <section id="screen-identify" class="screen">
+    <div class="board-texture"></div>
+    <div class="identify-inner">
+      <div class="result-kicker">Última etapa</div>
+      <h2 class="identify-title">Qual é o seu departamento?</h2>
+      <p class="identify-sub">Selecione uma opção para concluir o desafio.</p>
+
+      <div class="identify-name">
+        <label for="input-name">Seu nome (opcional)</label>
+        <input type="text" id="input-name" placeholder="Digite seu nome" autocomplete="off" maxlength="60">
+      </div>
+
+      <div class="dept-grid" id="dept-grid">
+        <!-- department buttons injected by JS -->
+      </div>
+
+      <button class="btn-restart" id="btn-conclude" disabled>Concluir desafio</button>
+    </div>
+  </section>
+
   <!-- ============ RESULT SCREEN ============ -->
   <section id="screen-result" class="screen">
     <div class="board-texture"></div>
@@ -315,6 +374,7 @@
       <p class="result-score" id="result-score">0<span>/3</span></p>
       <p class="result-msg" id="result-msg"></p>
       <p class="result-sub" id="result-sub"></p>
+      <p class="result-dept" id="result-dept"></p>
       <button class="btn-restart" id="btn-restart">Reiniciar investigação</button>
     </div>
   </section>
@@ -383,6 +443,14 @@
     }
   ];
 
+  const DEPARTMENTS = [
+    "Comercial","Recursos Humanos","TI","Financeiro",
+    "Produção","Marketing","Logística","P&D",
+    "Regulatórios","Qualidade","Compras","Controles Internos",
+    "Controladoria","Manutenção","Almoxarifado de M.P.","Almoxarifado de P.A.",
+    "Outros"
+  ];
+
   const IDLE_TIMEOUT_MS = 45000;
 
   let state = {
@@ -390,12 +458,15 @@
     score: 0,
     order: [],   // for each scenario: true = "ok" is on the LEFT (A), false = ok is on the RIGHT (B)
     scenarioOrder: [], // shuffled indices into SCENARIOS, re-rolled every new game
-    answered: false
+    answered: false,
+    department: null,
+    name: ''
   };
 
   const els = {
     attract: document.getElementById('screen-attract'),
     game: document.getElementById('screen-game'),
+    identify: document.getElementById('screen-identify'),
     result: document.getElementById('screen-result'),
     cardsRow: document.getElementById('cards-row'),
     caseLabel: document.getElementById('case-label'),
@@ -407,14 +478,18 @@
     compareRow: document.getElementById('compare-row'),
     explainBlock: document.getElementById('explain-block'),
     btnNext: document.getElementById('btn-next'),
+    deptGrid: document.getElementById('dept-grid'),
+    inputName: document.getElementById('input-name'),
+    btnConclude: document.getElementById('btn-conclude'),
     resultScore: document.getElementById('result-score'),
     resultMsg: document.getElementById('result-msg'),
     resultSub: document.getElementById('result-sub'),
+    resultDept: document.getElementById('result-dept'),
     btnRestart: document.getElementById('btn-restart')
   };
 
   function showScreen(name){
-    [els.attract, els.game, els.result].forEach(s => s.classList.remove('active'));
+    [els.attract, els.game, els.identify, els.result].forEach(s => s.classList.remove('active'));
     name.classList.add('active');
   }
 
@@ -429,6 +504,38 @@
       [idxs[i], idxs[j]] = [idxs[j], idxs[i]];
     }
     state.scenarioOrder = idxs;
+  }
+
+  function buildDeptGrid(){
+    els.deptGrid.innerHTML = '';
+    DEPARTMENTS.forEach(name => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'dept-btn';
+      btn.textContent = name;
+      btn.addEventListener('click', () => selectDepartment(name, btn));
+      els.deptGrid.appendChild(btn);
+    });
+  }
+
+  function selectDepartment(name, btnEl){
+    state.department = name;
+    els.deptGrid.querySelectorAll('.dept-btn').forEach(b => b.classList.remove('selected'));
+    btnEl.classList.add('selected');
+    els.btnConclude.disabled = false;
+  }
+
+  function resetIdentifyForm(){
+    state.department = null;
+    state.name = '';
+    els.inputName.value = '';
+    els.btnConclude.disabled = true;
+    els.deptGrid.querySelectorAll('.dept-btn').forEach(b => b.classList.remove('selected'));
+  }
+
+  function showIdentify(){
+    showScreen(els.identify);
+    scheduleIdleReset();
   }
 
   function buildDots(){
@@ -541,7 +648,7 @@
       </div>
     `;
     els.explainBlock.innerHTML = scenario.bad.explain;
-    els.btnNext.textContent = (state.current === SCENARIOS.length - 1) ? 'Ver resultado' : 'Próximo caso';
+    els.btnNext.textContent = (state.current === SCENARIOS.length - 1) ? 'Continuar' : 'Próximo caso';
 
     els.modalOverlay.classList.add('active');
   }
@@ -552,26 +659,28 @@
       state.current++;
       renderScenario();
     } else {
-      showResult();
+      showIdentify();
     }
   }
 
   function showResult(){
     const total = SCENARIOS.length;
     els.resultScore.innerHTML = `${state.score}<span>/${total}</span>`;
+    const who = state.name ? state.name : null;
     let msg, sub;
     if (state.score === total){
-      msg = "Investigador(a) nível especialista!";
+      msg = who ? `${who}, investigador(a) nível especialista!` : "Investigador(a) nível especialista!";
       sub = "Você identificou todas as irregularidades. Continue com esse olhar atento no dia a dia.";
     } else if (state.score >= Math.ceil(total/2)){
-      msg = "Bom trabalho — mas o detalhe faz a diferença.";
+      msg = who ? `Bom trabalho, ${who} — mas o detalhe faz a diferença.` : "Bom trabalho — mas o detalhe faz a diferença.";
       sub = "Revise os pontos que passaram despercebidos. Pequenos desvios podem virar grandes problemas.";
     } else {
-      msg = "Vale reforçar a atenção aos detalhes.";
+      msg = who ? `${who}, vale reforçar a atenção aos detalhes.` : "Vale reforçar a atenção aos detalhes.";
       sub = "Fique atento às práticas de Food Defense e Food Fraud no seu setor. Toque em reiniciar para tentar de novo.";
     }
     els.resultMsg.textContent = msg;
     els.resultSub.textContent = sub;
+    els.resultDept.textContent = state.department ? `Departamento: ${state.department}` : '';
     showScreen(els.result);
     scheduleIdleReset();
   }
@@ -579,6 +688,7 @@
   function startGame(){
     state.current = 0;
     state.score = 0;
+    resetIdentifyForm();
     shuffleOrder();
     showScreen(els.game);
     renderScenario();
@@ -605,9 +715,15 @@
 
   els.attract.addEventListener('click', startGame);
   els.btnNext.addEventListener('click', nextCase);
+  els.btnConclude.addEventListener('click', () => {
+    if (!state.department) return;
+    state.name = els.inputName.value.trim();
+    showResult();
+  });
   els.btnRestart.addEventListener('click', resetToAttract);
 
   // init
+  buildDeptGrid();
   shuffleOrder();
 })();
 </script>
