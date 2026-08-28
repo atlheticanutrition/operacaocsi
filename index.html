@@ -252,7 +252,7 @@
   .result-score span{ color:var(--yellow); }
   .result-msg{ font-size:clamp(16px,1.9vw,24px); color:var(--text); margin: 18px 0 8px; font-weight:500;}
   .result-sub{ font-size:clamp(13px,1.3vw,16px); color:var(--text-dim); margin-bottom: clamp(26px,4vh,40px); }
-  .result-actions{ display:flex; flex-direction:column; align-items:center; gap:16px; }
+  .result-actions{ display:flex; flex-direction:column; align-items:center; gap:16px; margin-top: clamp(24px,3.6vh,36px); }
   .btn-restart{
     font-family:var(--font-display); font-weight:600; letter-spacing:0.1em;
     text-transform:uppercase; font-size:clamp(15px,1.7vw,20px);
@@ -496,7 +496,6 @@
       <p class="result-dept" id="result-dept"></p>
       <div class="result-actions">
         <button class="btn-primary" id="btn-print-ticket" type="button">Imprimir ticket</button>
-        <button class="btn-restart" id="btn-restart">Reiniciar investigação</button>
       </div>
     </div>
   </section>
@@ -801,7 +800,6 @@
     resultMsg: document.getElementById('result-msg'),
     resultSub: document.getElementById('result-sub'),
     resultDept: document.getElementById('result-dept'),
-    btnRestart: document.getElementById('btn-restart'),
     btnPrintTicket: document.getElementById('btn-print-ticket'),
     adminOverlay: document.getElementById('admin-overlay'),
     adminFileName: document.getElementById('admin-filename'),
@@ -1146,7 +1144,6 @@
     await recordCompletion();
     showResult();
   });
-  els.btnRestart.addEventListener('click', resetToAttract);
   els.btnPrintTicket.addEventListener('click', gerarEImprimirTicket);
   els.btnAdminConnect.addEventListener('click', connectXlsxFile);
   els.btnAdminDownload.addEventListener('click', downloadXlsxNow);
