@@ -543,6 +543,7 @@
         <button class="btn-primary" id="btn-admin-connect" type="button">Conectar / trocar arquivo</button>
         <button class="btn-primary" id="btn-admin-download" type="button">Baixar registros agora</button>
         <button class="btn-primary" id="btn-admin-reset-ticket" type="button">Zerar contagem do ticket</button>
+        <button class="btn-primary" id="btn-admin-reset-records" type="button">Zerar registros salvos</button>
       </div>
       <button class="btn-restart admin-close" id="btn-admin-close" type="button">Fechar</button>
       <p class="admin-hint">Depois de conectado, o arquivo .xlsx é atualizado automaticamente a cada pessoa que concluir o desafio.</p>
@@ -703,6 +704,18 @@
     XLSX.writeFile(buildWorkbook(), XLSX_FILENAME_SUGGESTION);
   }
 
+  async function resetSavedRecords(){
+    const avisoArquivo = xlsxHandle
+      ? ' O arquivo Excel conectado também será limpo (ficará só com o cabeçalho).'
+      : '';
+    const ok = window.confirm(`Zerar todos os registros salvos (${records.length})?${avisoArquivo} Essa ação não pode ser desfeita.`);
+    if (!ok) return;
+    records = [];
+    try { await idbSet('records', records); } catch(err){ console.warn('Falha ao limpar registros salvos localmente:', err); }
+    await writeXlsxFile();
+    updateAdminStatus();
+  }
+
   async function tryImportExistingXlsx(handle){
     try {
       const file = await handle.getFile();
@@ -854,6 +867,7 @@
     btnAdminConnect: document.getElementById('btn-admin-connect'),
     btnAdminDownload: document.getElementById('btn-admin-download'),
     btnAdminResetTicket: document.getElementById('btn-admin-reset-ticket'),
+    btnAdminResetRecords: document.getElementById('btn-admin-reset-records'),
     btnAdminClose: document.getElementById('btn-admin-close'),
     kicker: document.querySelector('#screen-attract .kicker'),
     keyboard: document.getElementById('keyboard'),
@@ -1208,6 +1222,7 @@
   els.btnAdminConnect.addEventListener('click', connectXlsxFile);
   els.btnAdminDownload.addEventListener('click', downloadXlsxNow);
   els.btnAdminResetTicket.addEventListener('click', resetTicketCounter);
+  els.btnAdminResetRecords.addEventListener('click', resetSavedRecords);
   els.btnAdminClose.addEventListener('click', closeAdminPanel);
   els.adminOverlay.addEventListener('click', (e) => {
     if (e.target === els.adminOverlay) closeAdminPanel();
