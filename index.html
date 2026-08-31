@@ -109,16 +109,6 @@
   .brand-title .accent{ color:var(--red); }
   .brand-sub{ font-size:clamp(11px,1vw,14px); color:var(--text-dim); margin-top:2px; letter-spacing:0.02em; }
 
-  .case-progress{ display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
-  .case-label{
-    font-family:var(--font-display); font-size:clamp(13px,1.3vw,17px); letter-spacing:0.14em;
-    color:var(--yellow); text-transform:uppercase; font-weight:600;
-  }
-  .dots{ display:flex; gap:10px; }
-  .dot{ width:12px; height:12px; border-radius:50%; background:var(--line); border:1px solid #45454b; }
-  .dot.done{ background:var(--green); border-color:var(--green); }
-  .dot.current{ background:var(--yellow); border-color:var(--yellow); }
-
   /* ================= GAME SCREEN ================= */
   #screen-game{ padding: clamp(10px,2vh,22px) clamp(24px,4vw,64px) clamp(20px,3vh,36px); min-height:0; }
   .instruction{
@@ -398,10 +388,6 @@
       <div class="brand">
         <p class="brand-title">Operação <span class="accent">CSI</span></p>
         <p class="brand-sub">Controle, Segurança e Inspeção</p>
-      </div>
-      <div class="case-progress">
-        <div class="case-label" id="case-label">Caso 1 de 3</div>
-        <div class="dots" id="dots"></div>
       </div>
     </header>
 
@@ -757,7 +743,7 @@
       name: state.name,
       department: state.department,
       score: state.score,
-      total: SCENARIOS.length
+      total: state.scenarioOrder.length
     });
     try { await idbSet('records', records); } catch(err){ console.warn('Falha ao salvar registro localmente:', err); }
     await writeXlsxFile();
@@ -803,9 +789,7 @@
     identify: document.getElementById('screen-identify'),
     result: document.getElementById('screen-result'),
     cardsRow: document.getElementById('cards-row'),
-    caseLabel: document.getElementById('case-label'),
     scenarioTitle: document.getElementById('scenario-title'),
-    dots: document.getElementById('dots'),
     modalOverlay: document.getElementById('modal-overlay'),
     stamp: document.getElementById('stamp'),
     modalLead: document.getElementById('modal-lead'),
@@ -841,17 +825,32 @@
     name.classList.add('active');
   }
 
-  function shuffleOrder(){
-    state.order = SCENARIOS.map(() => Math.random() < 0.5);
+  // One case per person: each new game draws the next case from a shuffled
+  // queue (localStorage-backed so it survives reloads) covering all of
+  // SCENARIOS before repeating, so consecutive people don't get the same case.
+  function pickNextCaseIndex(){
+    const totalCases = SCENARIOS.length;
+    let queue = [];
+    try { queue = JSON.parse(localStorage.getItem('csi_fila_casos') || '[]'); } catch(err){ queue = []; }
+    if (!Array.isArray(queue)) queue = [];
 
-    // Fisher-Yates shuffle of the case sequence itself, so cases don't
-    // always play in the same 1-2-3 order on every new game.
-    const idxs = SCENARIOS.map((_, i) => i);
-    for (let i = idxs.length - 1; i > 0; i--){
-      const j = Math.floor(Math.random() * (i + 1));
-      [idxs[i], idxs[j]] = [idxs[j], idxs[i]];
+    if (queue.length === 0){
+      queue = SCENARIOS.map((_, i) => i);
+      for (let i = queue.length - 1; i > 0; i--){
+        const j = Math.floor(Math.random() * (i + 1));
+        [queue[i], queue[j]] = [queue[j], queue[i]];
+      }
+      // avoid repeating the same case that just played, back-to-back
+      const last = parseInt(localStorage.getItem('csi_ultimo_caso'), 10);
+      if (totalCases > 1 && queue[0] === last){
+        [queue[0], queue[1]] = [queue[1], queue[0]];
+      }
     }
-    state.scenarioOrder = idxs;
+
+    const idx = queue.shift();
+    localStorage.setItem('csi_fila_casos', JSON.stringify(queue));
+    localStorage.setItem('csi_ultimo_caso', String(idx));
+    return idx;
   }
 
   function buildDeptGrid(){
@@ -926,26 +925,13 @@
     scheduleIdleReset();
   }
 
-  function buildDots(){
-    els.dots.innerHTML = '';
-    SCENARIOS.forEach((_, i) => {
-      const d = document.createElement('div');
-      d.className = 'dot';
-      if (i < state.current) d.classList.add('done');
-      else if (i === state.current) d.classList.add('current');
-      els.dots.appendChild(d);
-    });
-  }
-
   function renderScenario(){
     state.answered = false;
     const idx = state.current;
     const scenario = SCENARIOS[state.scenarioOrder[idx]];
     const okIsLeft = state.order[idx];
 
-    els.caseLabel.textContent = `Caso ${idx + 1} de ${SCENARIOS.length}`;
     els.scenarioTitle.textContent = scenario.title;
-    buildDots();
 
     const leftData = okIsLeft ? scenario.ok : scenario.bad;
     const rightData = okIsLeft ? scenario.bad : scenario.ok;
@@ -1036,23 +1022,18 @@
       </div>
     `;
     els.explainBlock.innerHTML = scenario.bad.explain;
-    els.btnNext.textContent = (state.current === SCENARIOS.length - 1) ? 'Continuar' : 'Próximo caso';
+    els.btnNext.textContent = 'Continuar';
 
     els.modalOverlay.classList.add('active');
   }
 
   function nextCase(){
     els.modalOverlay.classList.remove('active');
-    if (state.current < SCENARIOS.length - 1){
-      state.current++;
-      renderScenario();
-    } else {
-      showIdentify();
-    }
+    showIdentify();
   }
 
   function showResult(){
-    const total = SCENARIOS.length;
+    const total = state.scenarioOrder.length;
     els.resultScore.innerHTML = `${state.score}<span>/${total}</span>`;
     const who = state.name ? state.name : null;
     let msg, sub;
@@ -1077,7 +1058,8 @@
     state.current = 0;
     state.score = 0;
     resetIdentifyForm();
-    shuffleOrder();
+    state.scenarioOrder = [pickNextCaseIndex()];
+    state.order = [Math.random() < 0.5];
     showScreen(els.game);
     renderScenario();
   }
@@ -1094,7 +1076,7 @@
     localStorage.setItem('contador_ticket_csi', contador);
     document.getElementById('print-ticket-number').textContent = String(contador).padStart(4, '0');
     document.getElementById('print-ticket-date').textContent = new Date().toLocaleDateString('pt-BR');
-    document.getElementById('print-ticket-score').textContent = `${state.score} de ${SCENARIOS.length}`;
+    document.getElementById('print-ticket-score').textContent = `${state.score} de ${state.scenarioOrder.length}`;
 
     let jaReiniciou = false;
     const reiniciar = () => {
