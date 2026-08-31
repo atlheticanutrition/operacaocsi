@@ -38,6 +38,7 @@
     position:absolute; inset:0;
     display:none;
     flex-direction:column;
+    color:var(--text);
     background:
       radial-gradient(ellipse at 20% 0%, rgba(216,30,44,0.10), transparent 55%),
       radial-gradient(ellipse at 85% 100%, rgba(240,180,41,0.08), transparent 50%),
@@ -339,6 +340,48 @@
     .dept-grid{ grid-template-columns: repeat(2, 1fr); }
     .kb-key{ min-width: clamp(24px,7vw,36px); }
   }
+
+  /* ================= MASCOT PHOTO BACKGROUNDS ================= */
+  /* Each screen gets a mascot photo as full background; since the photos are
+     light (gray/white), these screens switch to a light reading of the same
+     design tokens (dark text/borders, white cards) instead of the app's
+     default dark theme. Content is pushed toward whichever side of the photo
+     is empty, so it never sits on top of the mascot. */
+  #screen-attract,
+  #screen-game,
+  #screen-identify.result-correct, #screen-identify.result-wrong,
+  #screen-result.result-correct, #screen-result.result-wrong{
+    background-repeat:no-repeat; background-size:cover;
+    --text:#202024; --text-dim:#5a5a62; --line:#d8d8dc;
+    --panel:#ffffff; --panel-2:#f1f1f2; --yellow:#c98a12;
+  }
+  #screen-attract{
+    background-image:url("TELA 1.jpg"); background-position:right center;
+    align-items:flex-start; padding-left:clamp(28px,6vw,100px);
+  }
+  #screen-game{
+    background-image:url("TELA 2.jpg"); background-position:top right;
+  }
+  #screen-identify.result-correct, #screen-result.result-correct{
+    /* correct answer: mascot on the left (giving a thumbs-up check) */
+    background-image:url("TELA 3.jpg"); background-position:left center;
+    align-items:flex-end;
+  }
+  #screen-identify.result-wrong, #screen-result.result-wrong{
+    /* wrong answer: mascot on the right (pointing at the warning sign) */
+    background-image:url("TELA EXTRA.jpg"); background-position:right center;
+    align-items:flex-start;
+  }
+  #screen-result.result-correct{ padding-right:clamp(40px,7vw,140px); }
+  #screen-result.result-wrong{ padding-left:clamp(40px,7vw,140px); }
+  #screen-identify.result-correct{ padding-right:clamp(30px,6vw,110px); }
+  #screen-identify.result-wrong{ padding-left:clamp(30px,6vw,110px); }
+  #screen-identify.result-correct .identify-inner,
+  #screen-identify.result-wrong .identify-inner{ max-width:640px; }
+  #screen-identify.result-correct .dept-grid,
+  #screen-identify.result-wrong .dept-grid{ grid-template-columns: repeat(3, 1fr); }
+  #screen-result.result-correct .result-inner,
+  #screen-result.result-wrong .result-inner{ max-width:600px; }
 
   /* ================= PRINTED TICKET (thermal receipt, 74mm) ================= */
   #ticket-impressao{ display:none; }
@@ -998,10 +1041,22 @@
     document.fonts.ready.then(() => fitSquareFrames());
   }
 
+  // Swaps the mascot photo (and light/dark reading) behind the identify and
+  // result screens to match whether the person got the case right or wrong.
+  function applyResultTheme(isCorrect){
+    const onClass = isCorrect ? 'result-correct' : 'result-wrong';
+    const offClass = isCorrect ? 'result-wrong' : 'result-correct';
+    [els.identify, els.result].forEach(screen => {
+      screen.classList.remove(offClass);
+      screen.classList.add(onClass);
+    });
+  }
+
   function handleVote(isCorrect){
     if (state.answered) return;
     state.answered = true;
     if (isCorrect) state.score++;
+    applyResultTheme(isCorrect);
 
     const scenario = SCENARIOS[state.scenarioOrder[state.current]];
 
@@ -1058,6 +1113,8 @@
     state.current = 0;
     state.score = 0;
     resetIdentifyForm();
+    els.identify.classList.remove('result-correct', 'result-wrong');
+    els.result.classList.remove('result-correct', 'result-wrong');
     state.scenarioOrder = [pickNextCaseIndex()];
     state.order = [Math.random() < 0.5];
     showScreen(els.game);
