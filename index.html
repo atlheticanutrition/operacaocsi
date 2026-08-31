@@ -351,21 +351,9 @@
   #screen-game,
   #screen-identify.result-correct, #screen-identify.result-wrong,
   #screen-result.result-correct, #screen-result.result-wrong{
-    background-repeat:no-repeat;
+    background-repeat:no-repeat; background-size:cover;
     --text:#202024; --text-dim:#5a5a62; --line:#d8d8dc;
     --panel:#ffffff; --panel-2:#f1f1f2; --yellow:#c98a12;
-  }
-  /* The mascot screens use "contain" (not "cover"): the totem's actual
-     screen ratio can be narrower than these 16:9 photos, and "cover" would
-     crop the mascot itself off-screen instead of just trimming empty
-     gradient. "contain" always keeps the whole mascot visible, letterboxed
-     with a background-color close to the photo's own tone so the seam is
-     barely visible. #screen-game has no mascot to protect, so it stays on
-     cover (never lets the plain gradient show a seam). */
-  #screen-attract,
-  #screen-identify.result-correct, #screen-identify.result-wrong,
-  #screen-result.result-correct, #screen-result.result-wrong{
-    background-size:contain; background-color:#d2d2d4;
   }
   #screen-attract{
     background-image:url("TELA 1.jpg"); background-position:right center;
@@ -374,7 +362,6 @@
   #screen-attract .attract-footnote b{ color:#3a3a40; }
   #screen-game{
     background-image:url("TELA 2.jpg"); background-position:top right;
-    background-size:cover;
   }
   #screen-identify.result-correct, #screen-result.result-correct{
     /* correct answer: mascot on the left (giving a thumbs-up check) */
