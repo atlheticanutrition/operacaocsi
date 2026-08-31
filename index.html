@@ -359,6 +359,7 @@
     background-image:url("TELA 1.jpg"); background-position:right center;
     align-items:flex-start; padding-left:clamp(28px,6vw,100px);
   }
+  #screen-attract .attract-footnote b{ color:#3a3a40; }
   #screen-game{
     background-image:url("TELA 2.jpg"); background-position:top right;
   }
@@ -376,8 +377,12 @@
   #screen-result.result-wrong{ padding-left:clamp(40px,7vw,140px); }
   #screen-identify.result-correct{ padding-right:clamp(30px,6vw,110px); }
   #screen-identify.result-wrong{ padding-left:clamp(30px,6vw,110px); }
-  #screen-identify.result-correct .identify-inner,
-  #screen-identify.result-wrong .identify-inner{ max-width:640px; }
+  /* .identify-inner has margin:0 auto by default, which (as a flexbox auto
+     margin) would otherwise keep it centered no matter what align-items
+     says — override it asymmetrically so it actually docks to the empty
+     side instead of the mascot's side. */
+  #screen-identify.result-correct .identify-inner{ max-width:640px; margin:0 0 0 auto; }
+  #screen-identify.result-wrong .identify-inner{ max-width:640px; margin:0 auto 0 0; }
   #screen-identify.result-correct .dept-grid,
   #screen-identify.result-wrong .dept-grid{ grid-template-columns: repeat(3, 1fr); }
   #screen-result.result-correct .result-inner,
@@ -1215,7 +1220,6 @@
 
   // init
   buildDeptGrid();
-  shuffleOrder();
   loadPersistedState();
 })();
 </script>
