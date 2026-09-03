@@ -1,0 +1,4 @@
+Na tela inicial, pressione e segure o texto "Operação CSI" por ~1,2s → abre um painel de operador escondido.
+Toque em "Conectar / trocar arquivo" e escolha onde salvar (ou selecione o arquivo já existente — se ele já tiver dados de antes, eles são importados automaticamente).
+A partir daí, toda conclusão do desafio atualiza esse arquivo sozinha, sem precisar abrir o painel de novo.
+O painel também tem "Baixar registros agora", que baixa uma cópia .xlsx com tudo registrado até o momento — útil como backup ou se quiser coletar os dados sem estar no PC do totem.
