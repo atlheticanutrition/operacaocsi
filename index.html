@@ -396,16 +396,22 @@
     #ticket-impressao{
       position:static; display:block !important; width:74mm; min-height:1mm; padding:10px;
       background:#fff; color:#000; font-family:'Courier New', monospace; text-align:center;
+      font-weight:bold; -webkit-print-color-adjust:exact; print-color-adjust:exact;
     }
-    .ticket-separator{ width:100%; margin:12px 0; border-top:1px dashed #000; }
-    .ticket-header{ margin-bottom:4px; font-size:16px; font-weight:bold; line-height:1.3; text-transform:uppercase; }
-    .ticket-subtitle{ margin-bottom:8px; font-size:11px; letter-spacing:1px; text-transform:uppercase; }
-    .ticket-body{ padding:0 5px; font-size:12px; line-height:1.4; text-align:left; }
-    .ticket-info-grid{ margin:10px 0; padding:0 5px; font-size:13px; font-weight:bold; line-height:1.5; text-align:left; }
-    .ticket-footer-msg{ margin-top:10px; font-size:12px; font-weight:bold; line-height:1.3; }
+    /* Bold sintético: reforça o traço das letras para a impressora térmica não "falhar" pontos */
+    #ticket-impressao *{
+      font-weight:bold !important; color:#000 !important;
+      text-shadow:0.35px 0 0 #000, -0.35px 0 0 #000, 0 0.35px 0 #000, 0 -0.35px 0 #000;
+    }
+    .ticket-separator{ width:100%; margin:12px 0; border-top:2px dashed #000; }
+    .ticket-header{ margin-bottom:4px; font-size:17px; line-height:1.3; text-transform:uppercase; }
+    .ticket-subtitle{ margin-bottom:8px; font-size:12px; letter-spacing:1px; text-transform:uppercase; }
+    .ticket-body{ padding:0 5px; font-size:13px; line-height:1.5; text-align:left; }
+    .ticket-info-grid{ margin:10px 0; padding:0 5px; font-size:14px; line-height:1.6; text-align:left; }
+    .ticket-footer-msg{ margin-top:10px; font-size:13px; line-height:1.4; }
     .qrcode-section{ display:flex; flex-direction:column; align-items:center; margin:15px 0 5px; }
     .qrcode-image{ width:110px; height:110px; margin-bottom:6px; }
-    .qrcode-caption{ max-width:180px; font-size:10px; font-weight:bold; line-height:1.2; text-transform:uppercase; }
+    .qrcode-caption{ max-width:180px; font-size:11px; line-height:1.3; text-transform:uppercase; }
   }
 </style>
 </head>
