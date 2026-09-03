@@ -180,7 +180,9 @@
     padding: clamp(20px,3vw,40px);
     box-shadow:0 20px 60px rgba(0,0,0,0.5);
     position:relative;
+    scrollbar-width:none; -ms-overflow-style:none; /* Firefox / IE-Edge legado */
   }
+  .modal-card::-webkit-scrollbar{ display:none; } /* Chrome/Edge/Safari */
   .stamp{
     display:inline-block; font-family:var(--font-display); font-weight:700;
     text-transform:uppercase; letter-spacing:0.08em; font-size:clamp(24px,3.4vw,42px);
