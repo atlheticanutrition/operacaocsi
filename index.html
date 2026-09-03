@@ -583,8 +583,7 @@
   <div class="ticket-separator"></div>
   <div class="ticket-info-grid">
     TICKET Nº: <span id="print-ticket-number">------</span><br>
-    DATA: <span id="print-ticket-date">--/--/----</span><br>
-    PONTUAÇÃO: <span id="print-ticket-score">-- de --</span>
+    DATA: <span id="print-ticket-date">--/--/----</span>
   </div>
   <div class="ticket-separator"></div>
   <div class="qrcode-section">
@@ -1153,7 +1152,6 @@
     localStorage.setItem('contador_ticket_csi', contador);
     document.getElementById('print-ticket-number').textContent = String(contador).padStart(4, '0');
     document.getElementById('print-ticket-date').textContent = new Date().toLocaleDateString('pt-BR');
-    document.getElementById('print-ticket-score').textContent = `${state.score} de ${state.scenarioOrder.length}`;
 
     let jaReiniciou = false;
     const reiniciar = () => {
